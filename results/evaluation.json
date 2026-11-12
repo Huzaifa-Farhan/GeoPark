@@ -1,0 +1,153 @@
+{
+  "response_times": {
+    "GET /api/lots": {
+      "n": 300,
+      "p50_ms": 1.42,
+      "p95_ms": 1.58,
+      "max_ms": 1.78
+    },
+    "GET /api/recommend": {
+      "n": 300,
+      "p50_ms": 1.54,
+      "p95_ms": 1.78,
+      "max_ms": 5.85
+    }
+  },
+  "concurrency": [
+    {
+      "threads": 20,
+      "trials": 5,
+      "outcomes": [
+        {
+          "409": 19,
+          "201": 1
+        },
+        {
+          "201": 1,
+          "409": 19
+        },
+        {
+          "201": 1,
+          "409": 19
+        },
+        {
+          "409": 19,
+          "201": 1
+        },
+        {
+          "201": 1,
+          "409": 19
+        }
+      ],
+      "exactly_one_winner_every_trial": true
+    },
+    {
+      "threads": 50,
+      "trials": 5,
+      "outcomes": [
+        {
+          "409": 49,
+          "201": 1
+        },
+        {
+          "409": 49,
+          "201": 1
+        },
+        {
+          "409": 49,
+          "201": 1
+        },
+        {
+          "409": 49,
+          "201": 1
+        },
+        {
+          "409": 49,
+          "201": 1
+        }
+      ],
+      "exactly_one_winner_every_trial": true
+    }
+  ],
+  "update_latency_ms": {
+    "samples": 15,
+    "p50": 67.5,
+    "p95": 70.3,
+    "max": 70.3
+  },
+  "failure_handling": {
+    "heartbeat_interval_s": 0.5,
+    "stale_after_s": 2.0,
+    "time_to_mark_stale_ms": 2013,
+    "other_lots_unaffected": true,
+    "coordinator_reservation_while_cut_off_status": 503,
+    "alternatives_offered": 3,
+    "local_reservations_accepted_while_cut_off": "5/5",
+    "events_queued_at_lot": 10,
+    "time_to_live_after_reconnect_ms": 23,
+    "time_to_backlog_cleared_ms": 2,
+    "missed_events_applied_by_coordinator": 10
+  },
+  "scalability": [
+    {
+      "lots": 2,
+      "GET /api/lots": {
+        "n": 150,
+        "p50_ms": 1.44,
+        "p95_ms": 1.59,
+        "max_ms": 2.41
+      },
+      "GET /api/recommend": {
+        "n": 150,
+        "p50_ms": 1.53,
+        "p95_ms": 1.82,
+        "max_ms": 4.92
+      }
+    },
+    {
+      "lots": 4,
+      "GET /api/lots": {
+        "n": 150,
+        "p50_ms": 1.49,
+        "p95_ms": 1.85,
+        "max_ms": 3.79
+      },
+      "GET /api/recommend": {
+        "n": 150,
+        "p50_ms": 1.56,
+        "p95_ms": 2.06,
+        "max_ms": 2.97
+      }
+    },
+    {
+      "lots": 8,
+      "GET /api/lots": {
+        "n": 150,
+        "p50_ms": 1.64,
+        "p95_ms": 1.94,
+        "max_ms": 2.75
+      },
+      "GET /api/recommend": {
+        "n": 150,
+        "p50_ms": 1.7,
+        "p95_ms": 3.82,
+        "max_ms": 6.58
+      }
+    },
+    {
+      "lots": 16,
+      "GET /api/lots": {
+        "n": 150,
+        "p50_ms": 1.64,
+        "p95_ms": 2.6,
+        "max_ms": 5.64
+      },
+      "GET /api/recommend": {
+        "n": 150,
+        "p50_ms": 1.81,
+        "p95_ms": 4.43,
+        "max_ms": 7.41
+      }
+    }
+  ]
+}

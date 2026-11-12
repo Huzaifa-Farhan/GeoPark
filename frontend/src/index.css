@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body { @apply bg-concrete font-body text-asphalt; }
+  button { @apply cursor-pointer; }
+  button:disabled { @apply cursor-not-allowed; }
+  :focus-visible { outline: 3px solid #0A4DA2; outline-offset: 2px; }
+}
+
+@layer components {
+  /* Road-works hazard stripe: used only to flag stale (possibly outdated) data. */
+  .hazard {
+    background-image: repeating-linear-gradient(-45deg, #F2C200 0 10px, #2A2F35 10px 20px);
+  }
+  /* A painted parking bay: asphalt with white lines on both sides. */
+  .bay {
+    @apply relative flex h-[84px] items-center justify-center border-x-[3px] border-white/80 bg-asphalt;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold transition-colors;
+  }
+  .btn-primary { @apply bg-sign text-white hover:bg-sign-dark disabled:bg-asphalt/30; }
+  .btn-ghost { @apply border border-asphalt/30 bg-white text-asphalt hover:bg-concrete-dark/60 disabled:opacity-50; }
+  .field { @apply w-full rounded-md border border-asphalt/30 bg-white px-2 py-2 text-sm; }
+  .label { @apply mb-1 block text-xs font-semibold text-asphalt/70; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

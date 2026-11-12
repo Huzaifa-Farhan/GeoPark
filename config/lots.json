@@ -1,0 +1,6 @@
+[
+  {"id": "campus-north",  "name": "Campus North Lot",      "lat": 43.9453, "lng": -78.8964, "capacity": 16, "port": 8101, "base_price": 3.00, "min_price": 2.00, "max_price": 7.00},
+  {"id": "oshawa-centre", "name": "Oshawa Centre Garage",  "lat": 43.9206, "lng": -78.8790, "capacity": 20, "port": 8102, "base_price": 3.50, "min_price": 2.50, "max_price": 8.50},
+  {"id": "downtown",      "name": "Downtown Oshawa Lot",   "lat": 43.8975, "lng": -78.8658, "capacity": 12, "port": 8103, "base_price": 4.00, "min_price": 3.00, "max_price": 9.50},
+  {"id": "go-station",    "name": "Oshawa GO Station Lot", "lat": 43.8797, "lng": -78.8850, "capacity": 18, "port": 8104, "base_price": 2.50, "min_price": 1.75, "max_price": 6.00}
+]
