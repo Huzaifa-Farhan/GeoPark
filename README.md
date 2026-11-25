@@ -172,7 +172,7 @@ results/       evaluation output
 Lots are configured with environment variables (`LOT_ID`, `LOT_NAME`, `LOT_PORT`, `LOT_CAPACITY`,
 `LOT_BASE_PRICE`, `LOT_MIN_PRICE`, `LOT_MAX_PRICE`, `COORDINATOR_URL`, `HEARTBEAT_INTERVAL`, `SENSORS`,
 `SIM_RATE`, ...; see `lot_service/config.py`). Coordinator: `COORD_PORT`, `STALE_AFTER`,
-`FORWARD_TIMEOUT`, `FORWARD_RETRIES`. Frontend: `VITE_API_URL` if the coordinator is not on localhost:8000.
+`FORWARD_TIMEOUT`, `FORWARD_RETRIES`. Frontend: `VITE_API_URL` if the coordinator is not on localhost:8000; `VITE_TILE_URL` / `VITE_TILE_ATTRIBUTION` to use a different map tile provider (default: OpenStreetMap, no API key; the map needs internet access).
 
 ## Known limitations (be upfront about these in the report)
 

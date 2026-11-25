@@ -4,6 +4,12 @@ import L from "leaflet";
 import type { Lot } from "../types";
 import { money } from "../format";
 
+// Base map tiles. OpenStreetMap's standard tiles need no API key. To use another provider, set
+// VITE_TILE_URL (and VITE_TILE_ATTRIBUTION) in frontend/.env.local, e.g. a MapTiler/Stadia URL with your key.
+const TILE_URL: string = import.meta.env.VITE_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION: string =
+  import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 interface Props {
   lots: Lot[];
   selectedId: string | null;
@@ -66,10 +72,7 @@ export default function LotMap({ lots, selectedId, recommendedId, origin, onSele
       </div>
       <div className="m-3 min-h-[340px] flex-1 overflow-hidden rounded-lg">
         <MapContainer center={center} zoom={13} scrollWheelZoom={false} className="h-full min-h-[340px] w-full">
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          />
+          <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} maxZoom={19} />
           <FitBounds lots={lots} />
           {origin && (
             <CircleMarker center={[origin.lat, origin.lng]} radius={9} pathOptions={{ color: "#fff", weight: 3, fillColor: "#003C71", fillOpacity: 1 }}>
