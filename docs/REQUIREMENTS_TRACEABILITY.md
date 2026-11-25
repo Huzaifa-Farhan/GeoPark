@@ -1,3 +1,11 @@
+# Project requirements -> evidence
+
+| Requirement | Evidence in code | Evidence in UI | Test |
+|---|---|---|---|
+| Simulate IoT sensors to monitor space availability in real time | `lot_service/sensors.py`, events outbox in `db.py`, `GET /api/feed` | Live sensor feed, live map, lot gauges, bay map, *Occupancy by lot* chart | `test_integration.py::test_09` |
+| Interface for drivers to find and reserve spaces | `coordinator/ranking.py`, `POST /api/reservations` | Find parking, recommendations, map pins, Reserve a bay, Your reservations | `test_ranking.py`, `test_reservations.py`, `test_integration.py` |
+| Dynamic pricing on demand and peak hours | `lot_service/pricing.py`, `GET /api/pricing` | Pricing engine breakdown, 24 h forecast, *Hourly rate by lot*, Peak badge | `test_pricing.py`, `test_integration.py::test_09` |
+
 # Course concepts -> where they show up in GeoPark
 
 | Distributed-systems concept (project info sheet) | How GeoPark demonstrates it | Evidence |

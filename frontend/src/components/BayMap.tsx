@@ -25,7 +25,7 @@ function Bay({ id, state, selected, stale, onClick, title }: { id: string; state
         </span>
       )}
       {state === "reserved" && (
-        <span className="flex h-9 w-9 items-center justify-center rounded bg-sign font-display text-xl font-bold text-white ring-2 ring-white">R</span>
+        <span className="flex h-9 w-9 items-center justify-center rounded bg-simcoe font-display text-xl font-bold text-white ring-2 ring-white">R</span>
       )}
     </button>
   );
@@ -60,7 +60,7 @@ export default function BayMap({ lot, selectedSpace, demoMode, onPick, onToggleS
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-asphalt/70">
         <span>White number: free</span>
         <span>Grey car: occupied</span>
-        <span>Blue R: reserved right now</span>
+        <span>Blue R: reserved now</span>
         {demoMode ? (
           <span className="font-semibold text-stop">Demo mode: clicking a bay flips its sensor</span>
         ) : (

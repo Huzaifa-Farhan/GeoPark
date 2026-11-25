@@ -131,6 +131,25 @@ class IntegrationTests(unittest.TestCase):
         self.assertTrue(wait_for(lambda: any(l["id"] == "c" and l["status"] == "live"
                                              for l in requests.get(f"{self.api}/api/lots").json()["lots"]), 10))
 
+    def test_09_sensor_feed_history_and_pricing_endpoints(self):
+        requests.post(f"{self.api}/api/admin/lots/a/spaces/S03", json={"occupied": True})
+        feed = wait_for(lambda: [e for e in requests.get(f"{self.api}/api/feed").json()["feed"]
+                                 if e["type"] == "sensor" and e["lot_id"] == "a"
+                                 and e["payload"]["space_id"] == "S03"], 5)
+        self.assertTrue(feed)
+        hist = requests.get(f"{self.api}/api/history").json()["history"]
+        self.assertIn("a", hist)
+        self.assertTrue(all({"t", "occupancy", "price", "free"} <= set(s) for s in hist["a"]))
+        pricing = {p["id"]: p for p in requests.get(f"{self.api}/api/pricing").json()["lots"]}
+        pa = pricing["a"]
+        self.assertEqual(len(pa["forecast"]), 48)
+        for f in pa["forecast"]:
+            self.assertTrue(pa["min_price"] <= f["price_empty"] <= f["price_full"] <= pa["max_price"])
+        # the explained price matches the lot's own price (within rounding / clamp)
+        expected = min(max(pa["base_price"] * pa["time_factor"] * pa["occupancy_factor"], pa["min_price"]),
+                       pa["max_price"])
+        self.assertAlmostEqual(expected, pa["price"], delta=0.05)
+
 
 if __name__ == "__main__":
     unittest.main()

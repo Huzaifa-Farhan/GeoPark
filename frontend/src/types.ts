@@ -15,6 +15,8 @@ export interface Lot {
   price: number;
   min_price: number;
   max_price: number;
+  base_price: number;
+  sim_hour: number | null;
   sim_time: string;
   spaces: Record<string, SpaceState>;
   status: "live" | "stale";
@@ -81,4 +83,47 @@ export interface ReserveOutcome {
   reservation?: Reservation;
   duplicate?: boolean;
   alternatives?: Recommendation[];
+}
+
+export interface FeedEvent {
+  lot_id: string;
+  lot_name: string;
+  seq: number;
+  type: "sensor" | "reservation_created" | "reservation_cancelled" | string;
+  payload: Record<string, any>;
+  t: number;
+  received_at: number;
+}
+
+export interface HistorySample {
+  t: number;
+  sim_time: string;
+  occupancy: number;
+  free: number;
+  price: number;
+}
+
+export interface ForecastPoint {
+  hour: number;
+  demand: number;
+  price_now_occupancy: number;
+  price_empty: number;
+  price_full: number;
+}
+
+export interface LotPricing {
+  id: string;
+  name: string;
+  price: number;
+  base_price: number;
+  min_price: number;
+  max_price: number;
+  occupancy: number;
+  sim_hour: number;
+  demand: number;
+  time_factor: number;
+  occupancy_factor: number;
+  peak: boolean;
+  clamped: "max" | "min" | null;
+  forecast: ForecastPoint[];
 }

@@ -11,6 +11,8 @@ import uuid
 import requests
 from flask import Flask, jsonify, request
 
+from lot_service.pricing import compute_price, demand_level, occupancy_factor, time_factor
+
 from .ranking import PRIORITIES, rank_lots
 from .state import Registry
 
@@ -84,6 +86,50 @@ def create_app(stale_after: float = None) -> Flask:
     @app.get("/api/log")
     def log():
         return jsonify(log=reg.get_log(float(request.args.get("since", 0))))
+
+    @app.get("/api/feed")
+    def feed():
+        """Recent sensor readings and reservation events, as received from the lots' outboxes."""
+        try:
+            limit = max(1, min(200, int(request.args.get("limit", 60))))
+        except ValueError:
+            limit = 60
+        return jsonify(feed=reg.get_feed(limit))
+
+    @app.get("/api/history")
+    def history():
+        """Occupancy / price samples per lot (about the last 6 minutes) for the trend charts."""
+        return jsonify(history=reg.get_history())
+
+    @app.get("/api/pricing")
+    def pricing():
+        """Explain each lot's current price and forecast it over the simulated day.
+
+        Uses the same pure pricing functions as the lots, so the explanation matches what the lot
+        will actually charge (the lot still confirms the final price on booking).
+        """
+        out = []
+        for l in sorted(reg.lots(), key=lambda x: x["name"]):
+            hour = l.get("sim_hour")
+            if hour is None:
+                h, m = (l.get("sim_time") or "0:0").split(":")
+                hour = int(h) + int(m) / 60
+            base, lo, hi = l["base_price"], l["min_price"], l["max_price"]
+            forecast = [{"hour": h / 2, "demand": round(demand_level(h / 2), 3),
+                         "price_now_occupancy": compute_price(base, l["occupancy"], h / 2, lo, hi),
+                         "price_empty": compute_price(base, 0.0, h / 2, lo, hi),
+                         "price_full": compute_price(base, 1.0, h / 2, lo, hi)} for h in range(48)]
+            out.append({
+                "id": l["id"], "name": l["name"], "price": l["price"], "base_price": base,
+                "min_price": lo, "max_price": hi, "occupancy": l["occupancy"], "sim_hour": round(hour, 2),
+                "demand": round(demand_level(hour), 3),
+                "time_factor": round(time_factor(hour), 3),
+                "occupancy_factor": round(occupancy_factor(l["occupancy"]), 3),
+                "peak": demand_level(hour) >= 0.5,
+                "clamped": ("max" if l["price"] >= hi else "min" if l["price"] <= lo else None),
+                "forecast": forecast,
+            })
+        return jsonify(lots=out, peaks=[8.5, 17.5])
 
     def _origin_from(args):
         try:

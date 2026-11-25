@@ -27,8 +27,8 @@ export default function SearchPanel({ lots, search, onChange, rec, onPick }: Pro
   const set = (patch: Partial<SearchState>) => onChange({ ...search, ...patch });
 
   return (
-    <section className="rounded-lg bg-white p-4 shadow-sm">
-      <h2 className="font-display text-2xl font-semibold">Find parking</h2>
+    <section className="card">
+      <h2 className="card-title text-xl">Find parking</h2>
 
       <div className="mt-3 space-y-3">
         <div>
@@ -80,10 +80,10 @@ export default function SearchPanel({ lots, search, onChange, rec, onPick }: Pro
                 <button
                   type="button"
                   onClick={() => onPick(r.id)}
-                  className={`w-full rounded-md border p-2 text-left text-sm hover:bg-concrete ${r.full ? "border-asphalt/10 opacity-60" : "border-asphalt/25"}`}
+                  className={`w-full rounded-md border p-2 text-left text-sm hover:bg-navy-light/50 ${r.full ? "border-asphalt/10 opacity-60" : "border-asphalt/25"}`}
                 >
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="font-display text-lg font-semibold">{i + 1}. {r.name}</span>
+                    <span className="font-display text-sm font-bold text-navy">{i + 1}. {r.name}</span>
                     <span className={r.full ? "font-semibold text-stop" : "font-semibold text-go"}>{r.full ? "Full" : `${r.free} free`}</span>
                   </span>
                   <span className="block text-asphalt/70">

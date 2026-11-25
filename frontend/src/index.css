@@ -3,29 +3,39 @@
 @tailwind utilities;
 
 @layer base {
-  html, body { @apply bg-concrete font-body text-asphalt; }
+  html, body { @apply bg-concrete font-body text-asphalt antialiased; }
+  h1, h2, h3 { @apply font-display; }
   button { @apply cursor-pointer; }
   button:disabled { @apply cursor-not-allowed; }
-  :focus-visible { outline: 3px solid #0A4DA2; outline-offset: 2px; }
+  :focus-visible { outline: 3px solid #0077CA; outline-offset: 2px; }
 }
 
 @layer components {
-  /* Road-works hazard stripe: used only to flag stale (possibly outdated) data. */
+  /* Hazard stripe in brand tangerine/navy: used only to flag stale (possibly outdated) data. */
   .hazard {
-    background-image: repeating-linear-gradient(-45deg, #F2C200 0 10px, #2A2F35 10px 20px);
+    background-image: repeating-linear-gradient(-45deg, #E75D2A 0 10px, #003C71 10px 20px);
   }
   /* A painted parking bay: asphalt with white lines on both sides. */
   .bay {
-    @apply relative flex h-[84px] items-center justify-center border-x-[3px] border-white/80 bg-asphalt;
+    @apply relative flex h-[84px] items-center justify-center border-x-[3px] border-white/80 bg-asphalt transition-colors;
   }
+  .card { @apply rounded-xl bg-white p-4 shadow-card; }
+  .card-title { @apply font-display text-lg font-bold tracking-tight text-navy; }
+  .eyebrow { @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-simcoe; }
   .btn {
-    @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold transition-colors;
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold transition-colors;
   }
-  .btn-primary { @apply bg-sign text-white hover:bg-sign-dark disabled:bg-asphalt/30; }
-  .btn-ghost { @apply border border-asphalt/30 bg-white text-asphalt hover:bg-concrete-dark/60 disabled:opacity-50; }
-  .field { @apply w-full rounded-md border border-asphalt/30 bg-white px-2 py-2 text-sm; }
+  .btn-primary { @apply bg-navy text-white hover:bg-navy-dark disabled:bg-asphalt/30; }
+  .btn-accent { @apply bg-tangerine text-white hover:bg-tangerine-dark disabled:bg-asphalt/30; }
+  .btn-ghost { @apply border border-navy/20 bg-white text-navy hover:bg-navy-light disabled:opacity-50; }
+  .field { @apply w-full rounded-lg border border-navy/20 bg-white px-2.5 py-2 text-sm focus:border-simcoe; }
   .label { @apply mb-1 block text-xs font-semibold text-asphalt/70; }
 }
+
+/* Leaflet: brand the popups (map container uses `isolate` so it stays under the header) */
+.leaflet-container { font-family: "Public Sans", system-ui, sans-serif; background: #E3ECF5; }
+.leaflet-popup-content-wrapper { border-radius: 10px; }
+.lot-pin { background: none; border: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
