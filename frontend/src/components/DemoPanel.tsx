@@ -16,8 +16,8 @@ export default function DemoPanel({ lots, cut, demoMode, onDemoMode, onTogglePar
   const label = `${String(Math.floor(hour)).padStart(2, "0")}:${hour % 1 ? "30" : "00"}`;
 
   return (
-    <details className="rounded-lg bg-asphalt p-4 text-white shadow-sm">
-      <summary className="cursor-pointer font-display text-2xl font-semibold">Demo controls</summary>
+    <details className="rounded-xl bg-navy-dark p-4 text-white shadow-card">
+      <summary className="cursor-pointer font-display text-lg font-bold">Demo controls</summary>
       <div className="mt-3 space-y-4 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={demoMode} onChange={(e) => onDemoMode(e.target.checked)} />
@@ -38,7 +38,7 @@ export default function DemoPanel({ lots, cut, demoMode, onDemoMode, onTogglePar
           <p className="mb-1 font-semibold">Per lot</p>
           <ul className="space-y-2">
             {lots.map((l) => (
-              <li key={l.id} className="rounded-md bg-asphalt-light p-2">
+              <li key={l.id} className="rounded-md bg-white/10 p-2">
                 <p className="mb-1 font-semibold">{l.name}</p>
                 <div className="flex flex-wrap gap-2">
                   <button className="btn btn-ghost !py-1" onClick={() => onTogglePartition(l)}>

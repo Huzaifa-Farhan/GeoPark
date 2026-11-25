@@ -1,4 +1,4 @@
-import type { Lot, LogEntry, MyReservation, Priority, RecommendResponse, ReserveOutcome } from "./types";
+import type { FeedEvent, HistorySample, Lot, LogEntry, LotPricing, MyReservation, Priority, RecommendResponse, ReserveOutcome } from "./types";
 
 const BASE: string = import.meta.env.VITE_API_URL ?? "";
 
@@ -32,6 +32,24 @@ export async function fetchLog(): Promise<LogEntry[]> {
   const r = await request<{ log: LogEntry[] }>("/api/log");
   if (!r.ok) throw new Error("coordinator unreachable");
   return r.data.log;
+}
+
+export async function fetchFeed(): Promise<FeedEvent[]> {
+  const r = await request<{ feed: FeedEvent[] }>("/api/feed?limit=80");
+  if (!r.ok) throw new Error("coordinator unreachable");
+  return r.data.feed;
+}
+
+export async function fetchHistory(): Promise<Record<string, HistorySample[]>> {
+  const r = await request<{ history: Record<string, HistorySample[]> }>("/api/history");
+  if (!r.ok) throw new Error("coordinator unreachable");
+  return r.data.history;
+}
+
+export async function fetchPricing(): Promise<LotPricing[]> {
+  const r = await request<{ lots: LotPricing[] }>("/api/pricing");
+  if (!r.ok) throw new Error("coordinator unreachable");
+  return r.data.lots;
 }
 
 export interface SearchParams {

@@ -6,8 +6,8 @@ const dot = { info: "bg-asphalt/40", success: "bg-go", warning: "bg-paint" } as 
 export default function ActivityLog({ entries }: { entries: LogEntry[] }) {
   const recent = [...entries].reverse().slice(0, 25);
   return (
-    <section className="rounded-lg bg-white p-4 shadow-sm">
-      <h2 className="font-display text-2xl font-semibold">System activity</h2>
+    <section className="card">
+      <h2 className="card-title text-xl">System activity</h2>
       <p className="text-xs text-asphalt/60">What the coordinator has seen: registrations, stale lots, reconnections, bookings.</p>
       {recent.length === 0 ? (
         <p className="mt-2 text-sm text-asphalt/60">Nothing yet.</p>

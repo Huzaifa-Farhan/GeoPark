@@ -32,11 +32,25 @@ npm run dev          # open http://localhost:5173
 Run the tests and evaluation (no frontend needed):
 
 ```bash
-python -m unittest discover -s tests -t . -v     # 34 tests: unit, concurrency, end-to-end
+python -m unittest discover -s tests -t . -v     # 35 tests: unit, concurrency, end-to-end
 python tools/evaluate.py                          # writes results/evaluation.md + .json for the report
 ```
 
 Ports: coordinator 8000, lots 8101-8104 (see `config/lots.json`), UI 5173.
+
+![GeoPark dashboard](docs/screenshots/geopark-dashboard.png)
+
+## Course requirements -> where they are met
+
+| Requirement (Smart Parking System) | How GeoPark meets it | Where to look |
+|---|---|---|
+| **Simulate IoT sensors to monitor parking space availability in real time** | Every bay of every lot has a simulated occupancy sensor (`SensorSimulator`), busier around the simulated rush hours. Each reading is written to the lot's own SQLite DB and streamed to the coordinator within ~2 s. The UI shows a **live sensor feed**, a **live map**, per-lot gauges, a bay map and an occupancy trend chart. | `lot_service/sensors.py`, `GET /api/feed`, `GET /api/history`; UI: *Live sensor feed*, *Live map*, *Occupancy by lot* |
+| **Interface for drivers to find and reserve parking spaces** | Search by location / preferred lot / priority (balanced, cheapest, closest, most space), ranked recommendations with alternatives when a lot is full, map pins, click-to-pick a bay, reserve with arrival time and stay length, cancel. | `coordinator/ranking.py`, `POST /api/reservations`; UI: *Find parking*, *Reserve a bay*, *Your reservations* |
+| **Dynamic pricing based on demand and peak hours** | `price = base x peak-hour factor x occupancy factor`, clamped to the lot's min/max. Peaks at simulated 08:30 and 17:30. The UI explains the current price factor by factor, forecasts it over 24 h (with rush-hour strips) and charts each lot's live rate. | `lot_service/pricing.py`, `GET /api/pricing`; UI: *Dynamic pricing engine*, *Hourly rate by lot*, *Peak pricing* badge in the header |
+
+UI theme follows the Ontario Tech University palette: dark blue `#003C71` (UI chrome), Simcoe blue
+`#0077CA` and Tech Tangerine `#E75D2A` (accents and the first chart series). Green and red are used only
+to mean free and full.
 
 ## What is implemented (maps to the approved proposal)
 
@@ -87,6 +101,9 @@ Coordinator (what the UI uses):
 | `POST /api/reservations` | `{lot_id, driver, start, end, space_id?, request_id?}` (epoch seconds) -> 201 / 200 duplicate / 409 conflict / 503 lot unreachable |
 | `DELETE /api/lots/<id>/reservations/<rid>` | cancel |
 | `GET /api/log` | activity log (registrations, stale, reconnects, bookings) |
+| `GET /api/feed?limit` | live IoT feed: recent sensor readings and booking events received from the lots' outboxes |
+| `GET /api/history` | per-lot occupancy / price samples (about the last 6 min) for the trend charts |
+| `GET /api/pricing` | per-lot price breakdown (base, peak-hour factor, occupancy factor, clamp) + 24 h forecast |
 | `POST /api/admin/lots/<id>/partition` `{on}` | demo: cut/restore lot's link |
 | `POST /api/admin/lots/<id>/spaces/<space>` `{occupied}` | demo: set a sensor |
 | `POST /api/admin/sim` `{hour, running}` | demo: set simulated clock |
@@ -96,11 +113,13 @@ Each lot also serves `/status`, `/spaces`, `/reservations`, `/health` directly (
 
 ## Demo script (about 8 minutes)
 
-1. **Live data.** Start everything; show four lots filling/emptying; point at "Live - updated 1s ago".
+1. **Live data.** Start everything; show the live sensor feed ticking, map pins and gauges changing, and
+   "Live - updated 1s ago".
 2. **Recommendation.** Preferred lot = Campus North, priority "Closest". In Demo controls press
    *Fill lot* on Campus North -> banner says it is full and suggests the next best lot.
-3. **Pricing.** Demo controls: pin time to 08:30 (peak) vs 03:00; show price changes; fill a lot and watch
-   the price climb, capped at its max.
+3. **Pricing.** Demo controls: pin time to 08:30 (peak) vs 03:00; the header flips to "Peak pricing" and the
+   pricing panel's peak-hour factor turns orange. Fill a lot and watch the demand factor and price climb,
+   capped at its max (the panel says "held at max").
 4. **Conflict prevention.** In a terminal: run the concurrency demo below; show exactly one 201.
 5. **Failure.** Cut the link for one lot: after ~6 s its card gets the hazard stripe + "Stale", the others
    stay live, a booking attempt there returns the unreachable message with alternatives. While cut, book
@@ -141,7 +160,7 @@ PY
 ```
 coordinator/   app.py (API + relay) ranking.py (scoring) state.py (lot registry, staleness)
 lot_service/   app.py (API) db.py (SQLite + reservation logic) pricing.py sensors.py reporter.py simclock.py
-frontend/      React + TypeScript + Tailwind (Vite)
+frontend/      React + TypeScript + Tailwind (Vite), Leaflet map, Recharts charts
 tests/         unit, concurrency and end-to-end tests
 tools/         stack.py (process launcher) evaluate.py add_lot.py
 config/lots.json   the predefined lots
@@ -153,7 +172,7 @@ results/       evaluation output
 Lots are configured with environment variables (`LOT_ID`, `LOT_NAME`, `LOT_PORT`, `LOT_CAPACITY`,
 `LOT_BASE_PRICE`, `LOT_MIN_PRICE`, `LOT_MAX_PRICE`, `COORDINATOR_URL`, `HEARTBEAT_INTERVAL`, `SENSORS`,
 `SIM_RATE`, ...; see `lot_service/config.py`). Coordinator: `COORD_PORT`, `STALE_AFTER`,
-`FORWARD_TIMEOUT`, `FORWARD_RETRIES`. Frontend: `VITE_API_URL` if the coordinator is not on localhost:8000.
+`FORWARD_TIMEOUT`, `FORWARD_RETRIES`. Frontend: `VITE_API_URL` if the coordinator is not on localhost:8000; `VITE_TILE_URL` / `VITE_TILE_ATTRIBUTION` to use a different map tile provider (default: OpenStreetMap, no API key; the map needs internet access).
 
 ## Known limitations (be upfront about these in the report)
 
