@@ -12,6 +12,8 @@ import time
 
 import requests
 
+from shared import security
+
 from . import db
 
 
@@ -36,6 +38,7 @@ class Reporter(threading.Thread):
         try:
             payload = self.build_payload()
             resp = requests.post(f"{ctx.cfg.coordinator_url}/internal/report", json=payload,
+                                 headers={security.HEADER: ctx.cfg.service_key},
                                  timeout=ctx.cfg.report_timeout)
             resp.raise_for_status()
             acked = int(resp.json().get("acked_seq", 0))

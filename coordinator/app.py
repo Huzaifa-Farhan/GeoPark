@@ -9,10 +9,13 @@ import time
 import uuid
 
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
 
 from lot_service.pricing import compute_price, demand_level, occupancy_factor, time_factor
+from shared import security
 
+from .auth import (DEFAULT_TOKEN_TTL, DEV_ADMIN_PASSWORD, DEV_ADMIN_USER, Auth, UserStore, owner_tag,
+                   public_user, validate_credentials)
 from .ranking import PRIORITIES, rank_lots
 from .state import Registry
 
@@ -20,7 +23,7 @@ FORWARD_TIMEOUT = float(os.environ.get("FORWARD_TIMEOUT", 3.0))
 FORWARD_RETRIES = int(os.environ.get("FORWARD_RETRIES", 3))
 
 
-def call_lot(url, method, path, payload=None, timeout=FORWARD_TIMEOUT, retries=1):
+def call_lot(url, method, path, payload=None, timeout=FORWARD_TIMEOUT, retries=1, service_key=None):
     """Call a lot. Retries only on network errors (the lot de-duplicates by request_id).
 
     Returns (status_code, json_body, error_string_or_None).
@@ -29,7 +32,7 @@ def call_lot(url, method, path, payload=None, timeout=FORWARD_TIMEOUT, retries=1
     for _ in range(max(1, retries)):
         try:
             r = requests.request(method, f"{url}{path}", json=payload, timeout=timeout,
-                                 headers={"X-Origin": "coordinator"})
+                                 headers={security.HEADER: service_key or security.service_key()})
             try:
                 body = r.json()
             except ValueError:
@@ -40,16 +43,33 @@ def call_lot(url, method, path, payload=None, timeout=FORWARD_TIMEOUT, retries=1
     return None, None, last_err
 
 
-def create_app(stale_after: float = None) -> Flask:
+def create_app(stale_after: float = None, db_path: str = None, service_key: str = None,
+               admin_password: str = None, token_ttl: float = None) -> Flask:
     app = Flask("geopark-coordinator")
     reg = Registry(stale_after if stale_after is not None else float(os.environ.get("STALE_AFTER", 6.0)))
     app.config["REGISTRY"] = reg
+
+    # ---- security setup ---------------------------------------------------------------------------
+    service_key = service_key or security.service_key()
+    store = UserStore(db_path or os.environ.get("COORD_DB") or os.path.join("data", "coordinator.db"))
+    admin_user = os.environ.get("GEOPARK_ADMIN_USER") or DEV_ADMIN_USER
+    admin_password = admin_password or os.environ.get("GEOPARK_ADMIN_PASSWORD") or DEV_ADMIN_PASSWORD
+    store.ensure_admin(admin_user, admin_password)
+    auth = Auth(store, token_ttl or float(os.environ.get("TOKEN_TTL", DEFAULT_TOKEN_TTL)))
+    app.config["AUTH"] = auth
+    if security.using_dev_key(service_key):
+        reg.log("Using the development service key - set GEOPARK_SERVICE_KEY outside of demos", "warning")
+    if admin_password == DEV_ADMIN_PASSWORD:
+        reg.log("Using the default admin password - set GEOPARK_ADMIN_PASSWORD outside of demos", "warning")
+
+    def lot_call(url, method, path, payload=None, **kw):
+        return call_lot(url, method, path, payload, service_key=service_key, **kw)
 
     # ---- CORS so the React dev server can call us ---------------------------------------------
     @app.after_request
     def cors(resp):
         resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
         return resp
 
@@ -57,9 +77,45 @@ def create_app(stale_after: float = None) -> Flask:
     def preflight(_p):
         return ("", 204)
 
+    # ---- accounts -------------------------------------------------------------------------------
+    @app.post("/api/auth/register")
+    def register():
+        body = request.get_json(silent=True) or {}
+        username, password = body.get("username"), body.get("password")
+        problem = validate_credentials(username, password)
+        if problem:
+            return jsonify(error=problem, reason="invalid"), 400
+        user = store.create(username, password, role="driver")  # self-registration never grants admin
+        if user is None:
+            return jsonify(error="that username is already taken", reason="taken"), 409
+        reg.log(f"New driver account registered: {user['username']}", "info")
+        return jsonify(token=auth.issue_token(user), user=public_user(user), expires_in=auth.token_ttl), 201
+
+    @app.post("/api/auth/login")
+    def login():
+        body = request.get_json(silent=True) or {}
+        username, password = str(body.get("username") or ""), str(body.get("password") or "")
+        wait = auth.throttle.retry_after(username)
+        if wait > 0:
+            return jsonify(error=f"too many failed attempts - try again in {wait:.0f}s",
+                           reason="locked", retry_after=round(wait)), 429
+        user = store.verify(username, password)
+        if user is None:
+            auth.throttle.failed(username)
+            return jsonify(error="invalid username or password", reason="unauthenticated"), 401
+        auth.throttle.succeeded(username)
+        return jsonify(token=auth.issue_token(user), user=public_user(user), expires_in=auth.token_ttl)
+
+    @app.get("/api/auth/me")
+    @auth.required()
+    def me():
+        return jsonify(user=public_user(g.user))
+
     # ---- called by lots -----------------------------------------------------------------------
     @app.post("/internal/report")
     def report():
+        if not security.key_matches(request.headers.get(security.HEADER), service_key):
+            return jsonify(error="unknown service - missing or wrong service key"), 401
         body = request.get_json(silent=True)
         if not body or "lot" not in body or "snapshot" not in body:
             return jsonify(error="invalid report"), 400
@@ -177,16 +233,21 @@ def create_app(stale_after: float = None) -> Flask:
 
     # ---- reservations (relayed to the owning lot) -------------------------------------------------
     @app.post("/api/reservations")
+    @auth.required()
     def reserve():
         body = request.get_json(silent=True) or {}
         lot_id = body.get("lot_id")
         url = reg.url_of(lot_id) if lot_id else None
         if not url:
             return jsonify(error="unknown or missing lot_id"), 404
+        user = g.user
         request_id = str(body.get("request_id") or uuid.uuid4())
-        payload = {"request_id": request_id, "space_id": body.get("space_id"), "driver": body.get("driver"),
+        # The booking is always made as the logged-in user (any "driver" in the body is ignored), and the
+        # request id is scoped to the user so nobody can replay another user's id to read their booking.
+        payload = {"request_id": f"{owner_tag(user)}:{request_id}", "space_id": body.get("space_id"),
+                   "driver": user["username"], "owner": owner_tag(user),
                    "start": body.get("start"), "end": body.get("end")}
-        status, data, err = call_lot(url, "POST", "/reservations", payload, retries=FORWARD_RETRIES)
+        status, data, err = lot_call(url, "POST", "/reservations", payload, retries=FORWARD_RETRIES)
         name = reg.name_of(lot_id)
 
         if err is not None or status == 503:
@@ -199,39 +260,68 @@ def create_app(stale_after: float = None) -> Flask:
             data["alternatives"] = alternatives(lot_id, body)
         elif status == 201:
             res = data["reservation"]
-            reg.log(f"Reservation {res['id']} confirmed at '{name}' (space {res['space_id']}) for {res['driver']}",
-                    "success")
+            # the public activity log names the space, not the driver (privacy)
+            reg.log(f"Reservation {res['id']} confirmed at '{name}' (space {res['space_id']})", "success")
+        if isinstance(data.get("reservation"), dict):
+            data["reservation"].pop("request_id", None)
         data["request_id"] = request_id
         return jsonify(data), status
 
     @app.delete("/api/lots/<lot_id>/reservations/<rid>")
+    @auth.required()
     def cancel(lot_id, rid):
         url = reg.url_of(lot_id)
         if not url:
             return jsonify(error="unknown lot"), 404
-        status, data, err = call_lot(url, "DELETE", f"/reservations/{rid}")
+        # Check ownership at the lot (the source of truth) before cancelling. Admins may cancel anything.
+        status, data, err = lot_call(url, "GET", f"/reservations/{rid}")
+        if err is not None or status == 503:
+            return jsonify(error="lot unreachable", reason="lot_unreachable"), 503
+        if status == 404:
+            return jsonify(error="reservation not found"), 404
+        if g.user["role"] != "admin" and data.get("reservation", {}).get("owner") != owner_tag(g.user):
+            return jsonify(error="you can only cancel your own reservations", reason="forbidden"), 403
+        status, data, err = lot_call(url, "DELETE", f"/reservations/{rid}")
         if err is not None or status == 503:
             return jsonify(error="lot unreachable", reason="lot_unreachable"), 503
         return jsonify(data), status
 
+    @app.get("/api/me/reservations")
+    @auth.required()
+    def my_reservations():
+        """The logged-in user's active reservations, gathered from every lot that owns one."""
+        out, unreachable = [], []
+        for l in sorted(reg.lots(), key=lambda x: x["name"]):
+            status, data, err = lot_call(l["url"], "GET", f"/reservations?owner={owner_tag(g.user)}", timeout=1.5)
+            if err is not None or status != 200:
+                unreachable.append(l["id"])
+                continue
+            for r in data.get("reservations", []):
+                r.pop("request_id", None)
+                out.append({**r, "lot_id": l["id"], "lot_name": l["name"]})
+        out.sort(key=lambda r: r["start_ts"])
+        return jsonify(reservations=out, unreachable_lots=unreachable)
+
     @app.get("/api/lots/<lot_id>/reservations")
+    @auth.required("admin")
     def lot_reservations(lot_id):
         url = reg.url_of(lot_id)
         if not url:
             return jsonify(error="unknown lot"), 404
-        status, data, err = call_lot(url, "GET", "/reservations")
+        status, data, err = lot_call(url, "GET", "/reservations")
         if err is not None or status == 503:
             return jsonify(error="lot unreachable", reason="lot_unreachable"), 503
         return jsonify(data), status
 
-    # ---- demo controls (relayed to lots) ----------------------------------------------------------
+    # ---- demo controls (relayed to lots; admin accounts only) ------------------------------------
     @app.post("/api/admin/lots/<lot_id>/partition")
+    @auth.required("admin")
     def admin_partition(lot_id):
         url = reg.url_of(lot_id)
         if not url:
             return jsonify(error="unknown lot"), 404
         on = bool((request.get_json(silent=True) or {}).get("on"))
-        status, data, err = call_lot(url, "POST", "/admin/partition", {"on": on})
+        status, data, err = lot_call(url, "POST", "/admin/partition", {"on": on})
         if err:
             return jsonify(error="lot process not reachable"), 503
         reg.log(f"[demo] {'Cut' if on else 'Restored'} the link between '{reg.name_of(lot_id)}' and the coordinator",
@@ -239,21 +329,23 @@ def create_app(stale_after: float = None) -> Flask:
         return jsonify(data), status
 
     @app.post("/api/admin/lots/<lot_id>/spaces/<space_id>")
+    @auth.required("admin")
     def admin_space(lot_id, space_id):
         url = reg.url_of(lot_id)
         if not url:
             return jsonify(error="unknown lot"), 404
-        status, data, err = call_lot(url, "POST", f"/admin/spaces/{space_id}", request.get_json(silent=True) or {})
+        status, data, err = lot_call(url, "POST", f"/admin/spaces/{space_id}", request.get_json(silent=True) or {})
         if err:
             return jsonify(error="lot process not reachable"), 503
         return jsonify(data), status
 
     @app.post("/api/admin/sim")
+    @auth.required("admin")
     def admin_sim():
         body = request.get_json(silent=True) or {}
         results = {}
         for l in reg.lots():
-            status, data, err = call_lot(l["url"], "POST", "/admin/sim", body, timeout=1.5)
+            status, data, err = lot_call(l["url"], "POST", "/admin/sim", body, timeout=1.5)
             results[l["id"]] = "ok" if err is None and status == 200 else "failed"
         reg.log(f"[demo] Simulated clock set to {body.get('hour')}h ({'running' if body.get('running', True) else 'paused'})")
         return jsonify(results=results)

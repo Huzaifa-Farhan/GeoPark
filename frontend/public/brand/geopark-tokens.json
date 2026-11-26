@@ -1,0 +1,118 @@
+{
+  "name": "GeoPark",
+  "version": "1.0.0",
+  "colour": {
+    "brand": {
+      "blue": "#174BE8",
+      "ink": "#172D28",
+      "chalk": "#F5F6F2",
+      "lime": "#DFEFB7",
+      "street": "#D9DFD6"
+    },
+    "light": {
+      "background": "#F5F6F2",
+      "surface": "#FFFFFF",
+      "surfaceSubtle": "#E9EDE5",
+      "text": "#172D28",
+      "textMuted": "#59665E",
+      "border": "#D9DFD6",
+      "action": "#174BE8",
+      "onAction": "#FFFFFF",
+      "success": "#24724B",
+      "warning": "#8A5400",
+      "error": "#A53636"
+    },
+    "dark": {
+      "background": "#172D28",
+      "surface": "#203830",
+      "surfaceRaised": "#2C4336",
+      "text": "#F5F6F2",
+      "textMuted": "#B7C5BA",
+      "border": "#617565",
+      "action": "#DFEFB7",
+      "onAction": "#172D28",
+      "success": "#DFEFB7",
+      "warning": "#F4CE90",
+      "error": "#FFA6A6"
+    }
+  },
+  "typography": {
+    "family": "DM Sans",
+    "fallback": "Arial, sans-serif",
+    "weights": [
+      400,
+      500,
+      600,
+      700
+    ],
+    "display": {
+      "desktop": 96,
+      "mobile": 64,
+      "lineHeight": 0.98,
+      "tracking": "-0.055em",
+      "weight": 500
+    },
+    "heading": {
+      "desktop": 54,
+      "mobile": 40,
+      "lineHeight": 1.08,
+      "tracking": "-0.045em",
+      "weight": 500
+    },
+    "subheading": {
+      "size": 22,
+      "lineHeight": 1.25,
+      "weight": 500
+    },
+    "body": {
+      "size": 16,
+      "lineHeight": 1.65,
+      "weight": 400
+    },
+    "label": {
+      "size": 14,
+      "lineHeight": 1.4,
+      "weight": 500
+    },
+    "meta": {
+      "size": 12,
+      "lineHeight": 1.5,
+      "weight": 500
+    }
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48,
+    64,
+    96
+  ],
+  "radius": {
+    "control": 8,
+    "panel": 12,
+    "map": 16
+  },
+  "layout": {
+    "contentMax": 1280,
+    "desktopGutter": 64,
+    "tabletGutter": 36,
+    "mobileGutter": 24,
+    "breakpoints": [
+      600,
+      850,
+      1100
+    ]
+  },
+  "motion": {
+    "hover": 160,
+    "reveal": 650,
+    "revealDistance": 20,
+    "stagger": 80,
+    "easing": "cubic-bezier(0.2,0.7,0.2,1)",
+    "reducedMotion": "Disable transforms, transitions and smooth scrolling"
+  }
+}

@@ -55,7 +55,7 @@ def wait_for(fn, timeout=15, step=0.02):
     return None
 
 
-def concurrency(api, lot_id, n_threads, trials=5):
+def concurrency(api, lot_id, n_threads, headers, trials=5):
     outcomes = []
     for trial in range(trials):
         codes, lock = [], threading.Lock()
@@ -66,8 +66,8 @@ def concurrency(api, lot_id, n_threads, trials=5):
         def go(i):
             gate.wait()
             r = requests.post(f"{api}/api/reservations", json={
-                "lot_id": lot_id, "space_id": space, "driver": f"d{i}", "start": now + 60, "end": now + 3600},
-                timeout=30)
+                "lot_id": lot_id, "space_id": space, "start": now + 60, "end": now + 3600},
+                headers=headers, timeout=30)
             with lock:
                 codes.append(r.status_code)
 
@@ -85,6 +85,7 @@ def main():
     with Stack(lots, coord_port=PORT, data_dir=os.path.join(ROOT, "data_eval"), sensors=False,
                heartbeat=HEARTBEAT, stale_after=STALE_AFTER) as stack:
         api = stack.coord_url
+        admin, driver, svc = stack.login(), stack.driver("eval-driver"), stack.service_headers()
         print("1. response times ...")
         results["response_times"] = {
             "GET /api/lots": timed_get(f"{api}/api/lots", 300),
@@ -93,14 +94,14 @@ def main():
         }
 
         print("2. concurrency ...")
-        results["concurrency"] = [concurrency(api, "lot0", 20), concurrency(api, "lot1", 50)]
+        results["concurrency"] = [concurrency(api, "lot0", 20, driver), concurrency(api, "lot1", 50, driver)]
 
         print("3. availability update latency ...")
         lat = []
         for i in range(15):
             sid = f"S{i + 1:02d}"
             before = requests.get(f"{api}/api/lots/lot2").json()["free"]
-            requests.post(f"http://127.0.0.1:{lots[2]['port']}/admin/spaces/{sid}", json={"occupied": True})
+            requests.post(f"http://127.0.0.1:{lots[2]['port']}/admin/spaces/{sid}", json={"occupied": True}, headers=svc)
             t = time.perf_counter()
             ms = wait_for(lambda: requests.get(f"{api}/api/lots/lot2").json()["free"] == before - 1, 5)
             if ms is not None:
@@ -110,12 +111,12 @@ def main():
 
         print("4. failure handling ...")
         port3 = lots[3]["port"]
-        requests.post(f"{api}/api/admin/lots/lot3/partition", json={"on": True})
+        requests.post(f"{api}/api/admin/lots/lot3/partition", json={"on": True}, headers=admin)
         t_cut = time.perf_counter()
         t_stale = wait_for(lambda: requests.get(f"{api}/api/lots/lot3").json()["status"] == "stale", 15)
         others_live = all(l["status"] == "live" for l in requests.get(f"{api}/api/lots").json()["lots"] if l["id"] != "lot3")
-        r = requests.post(f"{api}/api/reservations", json={"lot_id": "lot3", "driver": "x", "start": time.time() + 30,
-                                                          "end": time.time() + 900})
+        r = requests.post(f"{api}/api/reservations", json={"lot_id": "lot3", "start": time.time() + 30,
+                                                          "end": time.time() + 900}, headers=driver)
         local_ok = 0
         for i in range(5):
             now = time.time()
@@ -123,10 +124,10 @@ def main():
                               json={"driver": "kiosk", "space_id": f"S{i + 1:02d}", "start": now + 30, "end": now + 900})
             local_ok += k.status_code == 201
         for i in range(5):
-            requests.post(f"http://127.0.0.1:{port3}/admin/spaces/S{i + 10:02d}", json={"occupied": True})
+            requests.post(f"http://127.0.0.1:{port3}/admin/spaces/S{i + 10:02d}", json={"occupied": True}, headers=svc)
         backlog = requests.get(f"http://127.0.0.1:{port3}/status").json()["backlog"]
         applied0 = requests.get(f"{api}/api/lots/lot3").json()["events_applied"]
-        requests.post(f"{api}/api/admin/lots/lot3/partition", json={"on": False})
+        requests.post(f"{api}/api/admin/lots/lot3/partition", json={"on": False}, headers=admin)
         t_live = wait_for(lambda: requests.get(f"{api}/api/lots/lot3").json()["status"] == "live", 15)
         t_synced = wait_for(lambda: requests.get(f"http://127.0.0.1:{port3}/status").json()["backlog"] == 0, 15)
         applied1 = requests.get(f"{api}/api/lots/lot3").json()["events_applied"]

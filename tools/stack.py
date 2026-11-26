@@ -12,6 +12,9 @@ import time
 import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+from coordinator.auth import DEV_ADMIN_PASSWORD, DEV_ADMIN_USER  # noqa: E402
+from shared.security import HEADER as SERVICE_HEADER, service_key  # noqa: E402
 
 
 def load_lots(path=None):
@@ -32,10 +35,34 @@ class Stack:
         self.quiet = quiet
         self.seed = seed
         self.procs = {}
+        self.admin_user = os.environ.get("GEOPARK_ADMIN_USER") or DEV_ADMIN_USER
+        self.admin_password = os.environ.get("GEOPARK_ADMIN_PASSWORD") or DEV_ADMIN_PASSWORD
 
     @property
     def coord_url(self):
         return f"http://127.0.0.1:{self.coord_port}"
+
+    # ---- helpers for scripts and tests that act as a user or as another service -------------------
+    @staticmethod
+    def service_headers():
+        """Headers that identify the caller as a GeoPark service (for calling a lot's internal endpoints)."""
+        return {SERVICE_HEADER: service_key()}
+
+    def login(self, username=None, password=None):
+        """Log in (default: the admin account) and return headers carrying the token."""
+        r = requests.post(f"{self.coord_url}/api/auth/login", timeout=10,
+                          json={"username": username or self.admin_user, "password": password or self.admin_password})
+        r.raise_for_status()
+        return {"Authorization": f"Bearer {r.json()['token']}"}
+
+    def driver(self, username, password="password123"):
+        """Register (or log in) a driver account and return headers carrying its token."""
+        r = requests.post(f"{self.coord_url}/api/auth/register", timeout=10,
+                          json={"username": username, "password": password})
+        if r.status_code == 409:
+            return self.login(username, password)
+        r.raise_for_status()
+        return {"Authorization": f"Bearer {r.json()['token']}"}
 
     def _spawn(self, name, module, env_extra):
         env = {**os.environ, "PYTHONPATH": ROOT, "PYTHONUNBUFFERED": "1", **{k: str(v) for k, v in env_extra.items()}}
@@ -43,7 +70,11 @@ class Stack:
         self.procs[name] = subprocess.Popen([sys.executable, "-m", module], cwd=ROOT, env=env, stdout=out, stderr=out)
 
     def start_coordinator(self):
-        self._spawn("coordinator", "coordinator", {"COORD_PORT": self.coord_port, "STALE_AFTER": self.stale_after})
+        self._spawn("coordinator", "coordinator", {
+            "COORD_PORT": self.coord_port, "STALE_AFTER": self.stale_after,
+            "COORD_DB": os.path.join(self.data_dir, "coordinator.db"),
+            "GEOPARK_ADMIN_USER": self.admin_user, "GEOPARK_ADMIN_PASSWORD": self.admin_password,
+        })
 
     def start_lot(self, lot):
         env = {

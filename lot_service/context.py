@@ -13,6 +13,9 @@ class LotContext:
         self.cfg = cfg
         self.clock = SimClock(cfg.sim_rate)
         self.partitioned = False          # simulated lost connection to the coordinator
+        # Bays marked occupied by hand (demo "Fill lot" / clicking a bay). The random sensor
+        # simulation will not free these, so a manually filled lot stays full until released.
+        self.manual_hold = set()
         self.wake = threading.Event()     # set to ask the reporter to send an update now
         self.stop = threading.Event()
         self.link = {"last_ok": None, "last_error": None, "attempts": 0, "failures": 0}

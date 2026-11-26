@@ -1,7 +1,9 @@
 """Configuration for one parking-lot service instance (read from environment variables)."""
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
+
+from shared.security import service_key as _default_service_key
 
 
 def _env(name, default, cast=str):
@@ -33,10 +35,12 @@ class LotConfig:
     heartbeat_interval: float = 2.0   # seconds between reports to the coordinator
     report_timeout: float = 2.0
     sensors_enabled: bool = True
-    sensor_interval: float = 2.0
+    sensor_interval: float = 4.0     # average seconds between simulated cars arriving or leaving
     sim_rate: float = 4.0         # simulated minutes per real second
     seed: Optional[int] = None
     max_reservation_hours: float = 12.0
+    # shared secret proving a request comes from another GeoPark service (GEOPARK_SERVICE_KEY)
+    service_key: str = field(default_factory=_default_service_key)
 
     def __post_init__(self):
         if not self.public_url:
@@ -62,7 +66,7 @@ class LotConfig:
             heartbeat_interval=_env("HEARTBEAT_INTERVAL", 2.0, float),
             report_timeout=_env("REPORT_TIMEOUT", 2.0, float),
             sensors_enabled=_env("SENSORS", True, _bool),
-            sensor_interval=_env("SENSOR_INTERVAL", 2.0, float),
+            sensor_interval=_env("SENSOR_INTERVAL", 4.0, float),
             sim_rate=_env("SIM_RATE", 4.0, float),
             seed=int(seed) if seed else None,
             max_reservation_hours=_env("MAX_RESERVATION_HOURS", 12.0, float),
