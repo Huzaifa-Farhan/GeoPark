@@ -1,4 +1,3 @@
-"""HTTP API of one parking lot. The lot owns its data and has the final say on every reservation."""
 import time
 import uuid
 

@@ -1,4 +1,3 @@
-"""End-to-end tests: real coordinator + lot processes talking over HTTP on localhost."""
 import threading
 import time
 import unittest

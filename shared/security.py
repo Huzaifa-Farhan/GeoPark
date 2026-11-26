@@ -1,10 +1,3 @@
-"""Service-to-service authentication shared by the coordinator and the lot services.
-
-Every GeoPark component holds the same secret (GEOPARK_SERVICE_KEY) and sends it in the
-X-Service-Key header. Only holders of the key can push lot reports to the coordinator or use a
-lot's internal endpoints, so a stranger on the network cannot fake a lot's availability, flip
-its sensors or cancel bookings.
-"""
 import hmac
 import os
 

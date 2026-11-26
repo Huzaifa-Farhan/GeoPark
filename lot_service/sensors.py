@@ -1,8 +1,4 @@
-"""Simulated IoT occupancy sensors.
 
-Every tick one bay changes state. Whether it is more likely to fill or empty depends on how
-busy the simulated time of day is, so lots fill up around the simulated rush hours.
-"""
 import random
 import threading
 import time

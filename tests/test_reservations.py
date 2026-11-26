@@ -1,4 +1,3 @@
-"""Concurrency and correctness tests for the lot's reservation logic (database layer + HTTP layer)."""
 import os
 import shutil
 import tempfile

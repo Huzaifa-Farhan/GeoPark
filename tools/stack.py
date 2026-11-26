@@ -1,7 +1,3 @@
-"""Start/stop a whole GeoPark stack (coordinator + lots) as separate OS processes.
-
-Used by run_all.py, the integration tests and the evaluation script.
-"""
 import json
 import os
 import shutil

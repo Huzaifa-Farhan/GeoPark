@@ -1,12 +1,3 @@
-"""Driver / admin authentication for the coordinator.
-
-* Accounts live in the coordinator's own SQLite database. Passwords are stored only as salted
-  hashes (werkzeug.security, scrypt/pbkdf2), never in plain text.
-* Logging in returns a signed, time-limited token (itsdangerous.URLSafeTimedSerializer). The token
-  carries the user id and is verified on every request with the server's secret, so it cannot be
-  forged or altered; the user's current role is re-read from the database each time.
-* Repeated wrong passwords lock the username for a short time (basic brute-force protection).
-"""
 import os
 import re
 import secrets

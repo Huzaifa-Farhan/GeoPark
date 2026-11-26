@@ -1,4 +1,3 @@
-"""Configuration for one parking-lot service instance (read from environment variables)."""
 import os
 from dataclasses import dataclass, field
 from typing import Optional

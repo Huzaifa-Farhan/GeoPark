@@ -1,4 +1,3 @@
-"""Security tests for the coordinator: accounts, login tokens, roles and the service key."""
 import os
 import shutil
 import sqlite3

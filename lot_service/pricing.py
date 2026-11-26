@@ -1,8 +1,3 @@
-"""Demand-aware pricing. Pure functions so they are easy to unit test.
-
-price = base * time_factor(sim hour) * occupancy_factor(occupancy), clamped to [min, max].
-Prices come from simulated demand only - there are no real payments.
-"""
 import math
 
 

@@ -1,12 +1,3 @@
-"""Background thread that registers the lot with the coordinator and keeps it up to date.
-
-* Sends a heartbeat/snapshot every `heartbeat_interval` seconds even if nothing changed, so the
-  coordinator can tell "quiet" apart from "gone".
-* Sends immediately when something changes (ctx.wake).
-* Events are queued in the lot's own database until the coordinator acknowledges them, so a lot
-  that was cut off simply sends everything it missed once the link is back.
-* The first report doubles as registration (it includes the lot's metadata).
-"""
 import threading
 import time
 

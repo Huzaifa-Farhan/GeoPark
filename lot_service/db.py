@@ -1,11 +1,3 @@
-"""SQLite data layer for ONE parking lot. This database is the single source of truth for the lot.
-
-Reservation safety has three layers:
-  1. every reservation runs inside BEGIN IMMEDIATE, so writers are serialised by SQLite's write lock;
-  2. the overlap check happens inside that same transaction;
-  3. a BEFORE INSERT trigger rejects any overlapping active reservation, as a database-level safety net.
-Each reservation request carries a unique request_id (UNIQUE column), which makes retries idempotent.
-"""
 import json
 import sqlite3
 import time

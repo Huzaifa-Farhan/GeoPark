@@ -1,4 +1,3 @@
-"""Shared runtime state for one lot service."""
 import threading
 import time
 

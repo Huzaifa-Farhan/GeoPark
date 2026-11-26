@@ -1,8 +1,3 @@
-"""Coordination service: the only thing drivers talk to.
-
-It keeps a (possibly lagging) copy of every lot's availability, ranks lots for a search and relays
-reservation requests. It never decides whether a space is available - the owning lot does.
-"""
 import os
 import threading
 import time

@@ -1,4 +1,3 @@
-"""Run one lot:  python -m lot_service   (configure with LOT_* environment variables)."""
 import logging
 
 from .app import create_app

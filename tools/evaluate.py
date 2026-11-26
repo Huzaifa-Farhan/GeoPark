@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-"""Evaluation for the final report. Starts its own stack on spare ports and measures:
-
-  1. API response times (p50/p95) for lots / recommend,
-  2. reservation conflict prevention under concurrent load,
-  3. availability update latency (sensor change -> visible at the coordinator),
-  4. failure handling: time to mark stale, local operation while cut off, time to catch up,
-  5. scalability: read latency as the number of lots grows.
-
-    python tools/evaluate.py            # writes results/evaluation.json and results/evaluation.md
-"""
 import json
 import os
 import statistics
