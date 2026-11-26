@@ -11,7 +11,7 @@ import { Landing } from "./pages/Landing";
 import { Reservations } from "./pages/Reservations";
 
 const TITLES: Record<string, string> = {
-  home: "GeoPark — A little less circling.",
+  home: "GeoPark - A little less circling.",
   login: "Log in · GeoPark",
   register: "Create an account · GeoPark",
   reservations: "Your reservations · GeoPark",

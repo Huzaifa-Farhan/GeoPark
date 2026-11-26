@@ -269,7 +269,7 @@ function NetworkSection({ lots, staleAfter }: { lots: Lot[]; staleAfter: number 
         <Reveal className="network-copy">
           <span className="eyebrow">LOCAL STRENGTH. CONNECTED THINKING.</span>
           <h2>One lot goes quiet.<br /><span>The city keeps moving.</span></h2>
-          <p>Each GeoPark lot runs independently. When one loses its connection, the others stay available—so you can find another place to park.</p>
+          <p>Each GeoPark lot runs independently. When one loses its connection, the others stay available so you can find another place to park.</p>
           <div className="network-facts">
             <div><strong>2 sec</strong><span>between heartbeats</span></div>
             <div><strong>{staleAfter} sec</strong><span>until a lot is marked stale</span></div>

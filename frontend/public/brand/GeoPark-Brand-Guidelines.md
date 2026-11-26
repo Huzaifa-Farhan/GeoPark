@@ -1,4 +1,4 @@
-# GeoPark — Brand identity system
+# GeoPark - Brand identity system
 Version 1.0 · November 2026
 
 ## 1. Brand foundation
