@@ -1,4 +1,3 @@
-"""Concurrency and correctness tests for the lot's reservation logic (database layer + HTTP layer)."""
 import os
 import shutil
 import tempfile
@@ -17,7 +16,11 @@ class ReservationTests(unittest.TestCase):
         self.dir = tempfile.mkdtemp()
         self.cfg = LotConfig(lot_id="t", db_path=os.path.join(self.dir, "t.db"), capacity=6)
         self.app = create_app(self.cfg)
+        # `client` acts as another GeoPark service (e.g. the coordinator): it holds the service key.
         self.client = self.app.test_client()
+        self.client.environ_base["HTTP_X_SERVICE_KEY"] = self.cfg.service_key
+        # `kiosk` is someone at the lot itself with no service key.
+        self.kiosk = self.app.test_client()
         self.now = time.time()
 
     def tearDown(self):
@@ -40,6 +43,20 @@ class ReservationTests(unittest.TestCase):
         [t.start() for t in threads]
         [t.join() for t in threads]
         return Counter(codes)
+
+    def test_manually_filled_lot_stays_full_despite_sensors(self):
+        for n in range(1, self.cfg.capacity + 1):
+            self.client.post(f"/admin/spaces/S{n:02d}", json={"occupied": True})
+        for _ in range(50):
+            self.assertFalse(self.client.post("/admin/sensors/step").get_json()["changed"])
+        self.assertEqual(self.client.get("/status").get_json()["free"], 0)
+
+        # freeing a bay by hand releases only that bay; held bays are still never freed
+        self.client.post("/admin/spaces/S01", json={"occupied": False})
+        for _ in range(50):
+            self.client.post("/admin/sensors/step")
+        states = {s["id"]: s["state"] for s in self.client.get("/spaces").get_json()["spaces"]}
+        self.assertTrue(all(states[f"S{n:02d}"] == "occupied" for n in range(2, self.cfg.capacity + 1)))
 
     def test_same_space_same_window_only_one_wins(self):
         c = self.hammer(60, lambda i: {"request_id": f"r{i}", "space_id": "S01", "driver": f"d{i}",
@@ -127,10 +144,39 @@ class ReservationTests(unittest.TestCase):
     def test_partition_blocks_coordinator_but_not_local_use(self):
         self.client.post("/admin/partition", json={"on": True})
         body = {"driver": "x", "start": self.now + 60, "end": self.now + 600, "space_id": "S01"}
-        via_coordinator = self.client.post("/reservations", json=body, headers={"X-Origin": "coordinator"})
-        local = self.client.post("/reservations", json=body)
+        via_coordinator = self.client.post("/reservations", json=body)
+        local = self.kiosk.post("/reservations", json=body)
         self.assertEqual(via_coordinator.status_code, 503)
         self.assertEqual(local.status_code, 201)
+
+    # ---- service-key protection --------------------------------------------------------------
+    def test_internal_endpoints_need_the_service_key(self):
+        rid = self.post(space_id="S01").json["reservation"]["id"]
+        for method, path in [("get", "/reservations"), ("get", f"/reservations/{rid}"),
+                             ("delete", f"/reservations/{rid}"), ("post", "/admin/spaces/S02"),
+                             ("post", "/admin/partition"), ("post", "/admin/sim"), ("post", "/admin/sensors/step")]:
+            self.assertEqual(getattr(self.kiosk, method)(path, json={}).status_code, 403, path)
+            wrong = getattr(self.kiosk, method)(path, json={}, headers={"X-Service-Key": "guess"})
+            self.assertEqual(wrong.status_code, 403, path)
+        # nothing was changed by the rejected calls
+        self.assertEqual(self.client.get(f"/reservations/{rid}").json["reservation"]["status"], "active")
+        self.assertFalse(self.client.get("/status").json["partitioned"])
+
+    def test_kiosk_can_still_check_availability_and_book(self):
+        self.assertEqual(self.kiosk.get("/status").status_code, 200)
+        self.assertEqual(self.kiosk.get("/spaces").status_code, 200)
+        r = self.kiosk.post("/reservations", json={"driver": "walk-in", "start": self.now + 60,
+                                                   "end": self.now + 600, "owner": "user:1"})
+        self.assertEqual(r.status_code, 201)
+        # a kiosk cannot claim a booking for a user account, and its request ids are kept separate
+        self.assertIsNone(r.json["reservation"]["owner"])
+        self.assertTrue(r.json["reservation"]["request_id"].startswith("kiosk:"))
+
+    def test_owner_is_stored_and_filterable(self):
+        self.post(space_id="S01", owner="user:7")
+        self.post(space_id="S02", owner="user:8")
+        mine = self.client.get("/reservations?owner=user:7").json["reservations"]
+        self.assertEqual([r["space_id"] for r in mine], ["S01"])
 
 
 if __name__ == "__main__":

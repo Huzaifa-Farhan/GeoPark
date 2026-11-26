@@ -1,8 +1,3 @@
-"""Simulated time of day, used for demand-based pricing and the sensor simulation.
-
-The clock is derived from wall-clock time, so every lot that uses the same rate agrees on the
-simulated hour without needing to coordinate. The coordinator's demo controls can pin or move it.
-"""
 import time
 
 

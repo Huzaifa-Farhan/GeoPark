@@ -20,7 +20,7 @@
 | Scalability / openness / extensibility | New lot self-registers; read latency vs. lots measured | `tools/add_lot.py`, evaluation section 5 |
 | Load balancing | Recommendations steer drivers from full lots to under-used ones; dynamic pricing shifts demand | `ranking.py`, `pricing.py` |
 | Heterogeneity | Services communicate only via a documented HTTP/JSON interface | README API section |
-| Security (not implemented) | Listed as future work / limitation | README |
+| Security | Driver/admin accounts with hashed passwords and signed expiring tokens (itsdangerous); owner-only cancel; admin-only demo controls; shared service key between lots and coordinator; login lockout | `coordinator/auth.py`, `shared/security.py`, `tests/test_auth.py`, README *Security* |
 
 Report checklist (from the info sheet): abstract, introduction, related work (e.g. ParkWhiz, SpotHero,
 municipal smart-parking systems - needs real citations), design diagrams, implementation, results

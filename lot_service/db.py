@@ -1,11 +1,3 @@
-"""SQLite data layer for ONE parking lot. This database is the single source of truth for the lot.
-
-Reservation safety has three layers:
-  1. every reservation runs inside BEGIN IMMEDIATE, so writers are serialised by SQLite's write lock;
-  2. the overlap check happens inside that same transaction;
-  3. a BEFORE INSERT trigger rejects any overlapping active reservation, as a database-level safety net.
-Each reservation request carries a unique request_id (UNIQUE column), which makes retries idempotent.
-"""
 import json
 import sqlite3
 import time
@@ -29,6 +21,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     price_per_hour REAL NOT NULL,
     total_price    REAL NOT NULL,
     created_at     REAL NOT NULL,
+    owner          TEXT,           -- 'user:<id>' for bookings made through the coordinator, NULL for kiosk
     CHECK (end_ts > start_ts)
 );
 CREATE INDEX IF NOT EXISTS idx_res_space ON reservations(space_id, status, start_ts, end_ts);
@@ -74,6 +67,10 @@ def init_db(path, capacity):
     with connection(path) as conn:
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA)
+        # migrate databases created before reservations had an owner
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(reservations)").fetchall()}
+        if "owner" not in cols:
+            conn.execute("ALTER TABLE reservations ADD COLUMN owner TEXT")
         have = conn.execute("SELECT COUNT(*) FROM spaces").fetchone()[0]
         for n in range(have + 1, capacity + 1):
             conn.execute("INSERT INTO spaces(id, occupied, updated_at) VALUES (?, 0, ?)", (f"S{n:02d}", time.time()))
@@ -131,12 +128,15 @@ def row_to_reservation(row):
     return {k: row[k] for k in row.keys()}
 
 
-def list_reservations(conn, space_id=None, include_cancelled=False):
+def list_reservations(conn, space_id=None, include_cancelled=False, owner=None):
     q = "SELECT * FROM reservations WHERE 1=1"
     args = []
     if space_id:
         q += " AND space_id = ?"
         args.append(space_id)
+    if owner:
+        q += " AND owner = ?"
+        args.append(owner)
     if not include_cancelled:
         q += " AND status = 'active'"
     q += " ORDER BY start_ts"
@@ -169,7 +169,8 @@ def set_occupied(conn, space_id, occupied, now, source="sensor"):
         raise
 
 
-def create_reservation(conn, *, request_id, space_id, driver, start, end, now, price_fn, max_hours=12.0):
+def create_reservation(conn, *, request_id, space_id, driver, start, end, now, price_fn, max_hours=12.0,
+                       owner=None):
     """Create a reservation atomically.
 
     Returns (outcome, data) where outcome is one of:
@@ -232,8 +233,8 @@ def create_reservation(conn, *, request_id, space_id, driver, start, end, now, p
         rid = uuid.uuid4().hex[:12]
         conn.execute(
             "INSERT INTO reservations(id, request_id, space_id, driver, start_ts, end_ts, status, "
-            "price_per_hour, total_price, created_at) VALUES (?,?,?,?,?,?, 'active', ?,?,?)",
-            (rid, request_id, chosen, driver, start, end, pph, total, now))
+            "price_per_hour, total_price, created_at, owner) VALUES (?,?,?,?,?,?, 'active', ?,?,?,?)",
+            (rid, request_id, chosen, driver, start, end, pph, total, now, owner))
         log_event(conn, "reservation_created",
                   {"reservation_id": rid, "space_id": chosen, "start": start, "end": end}, now)
         created = row_to_reservation(conn.execute("SELECT * FROM reservations WHERE id = ?", (rid,)).fetchone())

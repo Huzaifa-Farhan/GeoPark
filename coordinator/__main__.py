@@ -1,4 +1,3 @@
-"""Run the coordination service:  python -m coordinator"""
 import logging
 import os
 

@@ -1,7 +1,3 @@
-"""Cooperative recommendation: rank lots using free capacity, simulated travel cost, price and preferences.
-
-Pure functions (no Flask, no network) so they can be unit tested.
-"""
 import math
 
 # weights: (availability, price, distance)

@@ -1,16 +1,9 @@
-"""Background thread that registers the lot with the coordinator and keeps it up to date.
-
-* Sends a heartbeat/snapshot every `heartbeat_interval` seconds even if nothing changed, so the
-  coordinator can tell "quiet" apart from "gone".
-* Sends immediately when something changes (ctx.wake).
-* Events are queued in the lot's own database until the coordinator acknowledges them, so a lot
-  that was cut off simply sends everything it missed once the link is back.
-* The first report doubles as registration (it includes the lot's metadata).
-"""
 import threading
 import time
 
 import requests
+
+from shared import security
 
 from . import db
 
@@ -36,6 +29,7 @@ class Reporter(threading.Thread):
         try:
             payload = self.build_payload()
             resp = requests.post(f"{ctx.cfg.coordinator_url}/internal/report", json=payload,
+                                 headers={security.HEADER: ctx.cfg.service_key},
                                  timeout=ctx.cfg.report_timeout)
             resp.raise_for_status()
             acked = int(resp.json().get("acked_seq", 0))

@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""Scalability demo: start an extra lot while the system is running.
-
-The new lot registers itself with the coordinator and appears in the UI - no coordinator changes.
-    python tools/add_lot.py                      # adds 'popup-lot' on port 8105
-    python tools/add_lot.py --id garage-2 --port 8106 --name "Garage 2" --capacity 10
-"""
 import argparse
 import os
 import subprocess

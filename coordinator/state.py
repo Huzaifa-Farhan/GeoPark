@@ -1,8 +1,3 @@
-"""The coordinator's in-memory copy of each lot's availability.
-
-This copy can lag behind the lots (they own the real data), which is why every lot view carries
-the age of its last report and a stale flag. Nothing here is a source of truth for reservations.
-"""
 import threading
 import time
 from collections import deque
