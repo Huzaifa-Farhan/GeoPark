@@ -178,6 +178,29 @@ class ReservationTests(unittest.TestCase):
         mine = self.client.get("/reservations?owner=user:7").json["reservations"]
         self.assertEqual([r["space_id"] for r in mine], ["S01"])
 
+    def test_entry_pass_checks_in_at_the_gate(self):
+        res = self.post(space_id="S03").json["reservation"]
+        token = res["pass"]
+        self.assertEqual(self.client.get(f"/reservations/{res['id']}").json["reservation"]["pass"], token)
+        # the gate (no service key) accepts the genuine pass
+        r = self.kiosk.post("/gate/checkin", json={"pass": token})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((r.json["reservation_id"], r.json["space_id"]), (res["id"], "S03"))
+        # an edited pass, or one for another lot, is rejected
+        forged = token.replace("S03", "S04")
+        self.assertEqual(self.kiosk.post("/gate/checkin", json={"pass": forged}).json["reason"], "invalid")
+        other = create_app(LotConfig(lot_id="other", db_path=os.path.join(self.dir, "o.db"), capacity=2))
+        self.assertEqual(other.test_client().post("/gate/checkin", json={"pass": token}).status_code, 400)
+        # a cancelled reservation's pass no longer opens the gate
+        self.client.delete(f"/reservations/{res['id']}")
+        r = self.kiosk.post("/gate/checkin", json={"pass": token})
+        self.assertEqual((r.status_code, r.json["reason"]), (409, "cancelled"))
+
+    def test_entry_pass_respects_the_booking_window(self):
+        later = self.post(start=self.now + 7200, end=self.now + 9000).json["reservation"]
+        r = self.kiosk.post("/gate/checkin", json={"pass": later["pass"]})
+        self.assertEqual((r.status_code, r.json["reason"]), (409, "too_early"))
+
 
 if __name__ == "__main__":
     unittest.main()

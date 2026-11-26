@@ -79,6 +79,8 @@ export interface Reservation {
   total_price: number;
   created_at: number;
   owner?: string | null;
+  /** signed entry pass for the lot gate (QR code); only on active reservations */
+  pass?: string;
 }
 
 export interface MyReservation extends Reservation {

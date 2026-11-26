@@ -5,6 +5,7 @@ import type { ReserveOutcome } from "../lib/api";
 import { hoursText, money, spacesText, windowText } from "../lib/format";
 import { areaOf, sortedSpaces } from "../lib/lots";
 import { href, loginHref } from "../lib/router";
+import { EntryPass } from "./EntryPass";
 import { useSession } from "../lib/session";
 import type { Lot, Recommendation } from "../lib/types";
 
@@ -138,12 +139,16 @@ export function BookingDialog({
           <h2 id="booking-title">Your space is confirmed.</h2>
           <p><strong>{lot.name}</strong> · Bay {outcome.reservation.space_id}</p>
           <p>{windowText(outcome.reservation.start_ts, outcome.reservation.end_ts)}</p>
+          {outcome.reservation.pass && (
+            <EntryPass pass={outcome.reservation.pass} lotName={lot.name} spaceId={outcome.reservation.space_id}
+              start={outcome.reservation.start_ts} end={outcome.reservation.end_ts} />
+          )}
           <div className="booking-summary">
             <span>{money(outcome.reservation.price_per_hour)}/hr · confirmed by the lot</span>
             <strong>{money(outcome.reservation.total_price)} CAD</strong>
           </div>
           {outcome.duplicate && <p className="dialog-note">This request was already confirmed, so no second booking was made.</p>}
-          <p className="dialog-note">No payment is collected. You can cancel from My reservations.</p>
+          <p className="dialog-note">No payment is collected. Your pass is also in My reservations, where you can cancel.</p>
           <div className="dialog-actions">
             <a className="button" href="#/reservations" onClick={close}>View my reservations</a>
             <button className="text-link" onClick={close}>Back to parking</button>

@@ -5,14 +5,15 @@ from flask import Flask, jsonify, request
 
 from shared import security
 
-from . import db
+from . import db, passes
 from .config import LotConfig
 from .context import LotContext
 from .reporter import Reporter
 from .sensors import SensorSimulator
 
 # What a caller WITHOUT the service key (e.g. the on-site kiosk) may do at a lot.
-PUBLIC_ROUTES = {("GET", "/health"), ("GET", "/status"), ("GET", "/spaces"), ("POST", "/reservations")}
+PUBLIC_ROUTES = {("GET", "/health"), ("GET", "/status"), ("GET", "/spaces"), ("POST", "/reservations"),
+                 ("POST", "/gate/checkin")}
 
 
 def create_app(cfg: LotConfig, start_background: bool = False) -> Flask:
@@ -61,9 +62,10 @@ def create_app(cfg: LotConfig, start_background: bool = False) -> Flask:
     @app.get("/reservations")
     def reservations():
         with db.connection(cfg.db_path) as conn:
-            return jsonify(reservations=db.list_reservations(
+            rows = db.list_reservations(
                 conn, request.args.get("space_id"), request.args.get("include_cancelled") == "1",
-                owner=request.args.get("owner") or None))
+                owner=request.args.get("owner") or None)
+        return jsonify(reservations=[passes.with_pass(cfg, r) for r in rows])
 
     @app.get("/reservations/<rid>")
     def get_reservation(rid):
@@ -71,7 +73,7 @@ def create_app(cfg: LotConfig, start_background: bool = False) -> Flask:
             res = db.get_reservation(conn, rid)
         if res is None:
             return jsonify(error="reservation not found"), 404
-        return jsonify(reservation=res)
+        return jsonify(reservation=passes.with_pass(cfg, res))
 
     # ---- reservations ----------------------------------------------------------------------
     @app.post("/reservations")
@@ -96,7 +98,7 @@ def create_app(cfg: LotConfig, start_background: bool = False) -> Flask:
                 owner=(body.get("owner") or None) if trusted else None)
         if outcome in ("created", "duplicate"):
             ctx.wake.set()
-            return jsonify(reservation=data, duplicate=(outcome == "duplicate"), lot_id=cfg.lot_id), (
+            return jsonify(reservation=passes.with_pass(cfg, data), duplicate=(outcome == "duplicate"), lot_id=cfg.lot_id), (
                 201 if outcome == "created" else 200)
         code = {"conflict": 409, "invalid": 400, "not_found": 404}[outcome]
         return jsonify(lot_id=cfg.lot_id, **data), code
@@ -109,6 +111,26 @@ def create_app(cfg: LotConfig, start_background: bool = False) -> Flask:
             return jsonify(error="reservation not found"), 404
         ctx.wake.set()
         return jsonify(reservation=data, outcome=outcome)
+
+    # ---- gate check-in (the QR code on a driver's pass) --------------------------------------
+    # Public, like the kiosk: the gate scanner sends the pass and the lot checks it against its own DB.
+    @app.post("/gate/checkin")
+    def gate_checkin():
+        body = request.get_json(silent=True) or {}
+        found = passes.read_pass(cfg, body.get("pass"))
+        if found is None:
+            return jsonify(ok=False, reason="invalid", error="this pass is not valid at this lot"), 400
+        rid, space_id = found
+        with db.connection(cfg.db_path) as conn:
+            res = db.get_reservation(conn, rid)
+        ok, reason = passes.check(cfg, res, time.time())
+        if not ok:
+            messages = {"not_found": "reservation not found", "cancelled": "this reservation was cancelled",
+                        "too_early": "too early: entry opens 15 minutes before the booking starts",
+                        "expired": "this reservation has ended"}
+            return jsonify(ok=False, reason=reason, error=messages[reason]), (404 if reason == "not_found" else 409)
+        return jsonify(ok=True, lot_id=cfg.lot_id, reservation_id=rid, space_id=space_id,
+                       start_ts=res["start_ts"], end_ts=res["end_ts"])
 
     # ---- demo / admin controls (not used by drivers) ---------------------------------------
     @app.post("/admin/spaces/<space_id>")

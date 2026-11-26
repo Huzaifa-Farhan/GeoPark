@@ -394,3 +394,20 @@ main:focus { outline: none; }
 .chart-intro { margin: -6px 0 6px; }
 /* taken bays stay at full strength so a parked car reads clearly; only free bays are clickable for drivers */
 .bay-grid:not(.compact) .bay.occupied:disabled, .bay-grid:not(.compact) .bay.reserved:disabled { opacity: 1; cursor: not-allowed; }
+
+/* entry pass (QR code for the lot gate) */
+.entry-pass { display: flex; align-items: center; gap: 18px; margin: 14px 0 6px; padding: 14px; border: 1px solid #dfe5da; border-radius: 12px; background: #fff; text-align: left; }
+.entry-pass .pass-qr { flex-shrink: 0; display: block; border-radius: 6px; }
+.entry-pass-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.entry-pass-text strong { font-size: 16px; color: var(--ink, #172d28); }
+.entry-pass-text span:not(.eyebrow) { font-size: 14px; }
+.entry-pass-text small { font-size: 12.5px; color: #4e5a52; line-height: 1.45; margin-top: 4px; }
+.res-row { flex-wrap: wrap; }
+.res-row > .entry-pass { flex-basis: 100%; margin: 4px 0 0; }
+.pass-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 13.5px; margin-top: 2px; }
+@media (max-width: 560px) {
+  .entry-pass { flex-direction: column; text-align: center; }
+  .entry-pass-text { align-items: center; }
+}
+.confirmation .entry-pass { flex-direction: column; text-align: center; }
+.confirmation .entry-pass-text { align-items: center; }

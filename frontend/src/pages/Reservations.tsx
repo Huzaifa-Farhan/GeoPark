@@ -1,5 +1,6 @@
-import { AlertCircle, CalendarClock, Check, RotateCcw } from "lucide-react";
+import { AlertCircle, CalendarClock, Check, QrCode, RotateCcw } from "lucide-react";
 import { useState } from "react";
+import { EntryPass } from "../components/EntryPass";
 import { LoginRequired } from "../components/Gate";
 import * as api from "../lib/api";
 import { money, windowText } from "../lib/format";
@@ -16,6 +17,7 @@ export function Reservations({ lotNames, refreshLots }: { lotNames: Record<strin
   const { user } = useSession();
   const mine = usePolling(api.fetchMyReservations, 8000, user?.username ?? "", Boolean(user));
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [showPass, setShowPass] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
 
@@ -77,7 +79,15 @@ export function Reservations({ lotNames, refreshLots }: { lotNames: Record<strin
                   ) : (
                     <button className="reserve-button" onClick={() => setConfirming(r.id)}>Cancel reservation</button>
                   ))}
+                {phase !== "past" && r.pass && (
+                  <button className="text-link pass-toggle" aria-expanded={showPass === r.id} onClick={() => setShowPass(showPass === r.id ? null : r.id)}>
+                    <QrCode size={15} /> {showPass === r.id ? "Hide entry pass" : "Show entry pass"}
+                  </button>
+                )}
               </div>
+              {phase !== "past" && r.pass && showPass === r.id && (
+                <EntryPass pass={r.pass} lotName={r.lot_name} spaceId={r.space_id} start={r.start_ts} end={r.end_ts} />
+              )}
             </li>
           ))}
         </ul>
