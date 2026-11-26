@@ -1,8 +1,4 @@
-"""Simulated IoT occupancy sensors.
 
-Every tick one bay changes state. Whether it is more likely to fill or empty depends on how
-busy the simulated time of day is, so lots fill up around the simulated rush hours.
-"""
 import random
 import threading
 import time
@@ -25,9 +21,14 @@ class SensorSimulator(threading.Thread):
             states = db.space_states(conn, now)
             if not states:
                 return None
+            held = set(ctx.manual_hold)  # copy: the set is changed by request threads
             occupied = [s for s in states if s["state"] == "occupied"]
             free = [s for s in states if s["state"] == "free"]
             occ = len(occupied) / len(states)
+            # bays held occupied by a manual override are never freed by the simulation
+            occupied = [s for s in occupied if s["id"] not in held]
+            if not occupied and not free:
+                return None
             target = 0.15 + 0.75 * demand_level(ctx.clock.hour(now))
             p_occupy = min(0.9, max(0.1, 0.5 + (target - occ) * 1.6))
             if (self.rng.random() < p_occupy and free) or not occupied:

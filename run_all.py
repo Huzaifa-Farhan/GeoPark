@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""Start the whole GeoPark backend (coordinator + all lots from config/lots.json).
-
-    python run_all.py              # keep existing lot databases
-    python run_all.py --reset      # start from empty databases
-    python run_all.py --no-sensors # disable the random sensor simulation (manual control only)
-"""
 import argparse
 import signal
 import sys

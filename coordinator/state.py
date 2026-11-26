@@ -1,8 +1,3 @@
-"""The coordinator's in-memory copy of each lot's availability.
-
-This copy can lag behind the lots (they own the real data), which is why every lot view carries
-the age of its last report and a stale flag. Nothing here is a source of truth for reservations.
-"""
 import threading
 import time
 from collections import deque
@@ -14,6 +9,9 @@ class Registry:
         self._lots = {}
         self._lock = threading.RLock()
         self._log = deque(maxlen=300)
+        self._feed = deque(maxlen=200)      # recent sensor / reservation events (live IoT feed)
+        self._history = {}                  # lot_id -> deque of samples for the trend charts
+        self.history_every = 2.0            # seconds between samples per lot
 
     # ---- log shown in the demo UI ----------------------------------------------------
     def log(self, message, level="info"):
@@ -48,6 +46,14 @@ class Registry:
             if fresh:
                 rec["last_event_seq"] = fresh[-1]["seq"]
                 rec["events_applied"] += len(fresh)
+                for e in fresh[-50:]:
+                    self._feed.append({"lot_id": lot["id"], "lot_name": lot["name"], "seq": e["seq"],
+                                       "type": e["type"], "payload": e.get("payload", {}),
+                                       "t": e.get("created_at", now), "received_at": now})
+            hist = self._history.setdefault(lot["id"], deque(maxlen=180))
+            if not hist or now - hist[-1]["t"] >= self.history_every:
+                hist.append({"t": now, "sim_time": snap.get("sim_time"), "occupancy": snap["occupancy"],
+                             "free": snap["free"], "price": snap["price"]})
             if was_stale:
                 if fresh:
                     self.log(f"'{lot['name']}' reconnected - caught up on {len(fresh)} missed update(s)", "success")
@@ -57,6 +63,14 @@ class Registry:
             return events[-1]["seq"] if events else rec["last_event_seq"]
 
     # ---- reads ---------------------------------------------------------------------------
+    def get_feed(self, limit=60):
+        with self._lock:
+            return list(self._feed)[-limit:]
+
+    def get_history(self):
+        with self._lock:
+            return {lot_id: list(h) for lot_id, h in self._history.items()}
+
     def _is_stale(self, rec, now):
         return (now - rec["received_at"]) > self.stale_after
 
@@ -70,6 +84,7 @@ class Registry:
             "free": snap["free"], "occupied": snap["occupied"], "reserved": snap["reserved"],
             "total": snap["total"], "occupancy": snap["occupancy"], "price": snap["price"],
             "min_price": snap["min_price"], "max_price": snap["max_price"],
+            "base_price": snap.get("base_price", snap["price"]), "sim_hour": snap.get("sim_hour"),
             "sim_time": snap["sim_time"], "spaces": snap["spaces"],
             "status": "stale" if age > self.stale_after else "live",
             "stale": age > self.stale_after,

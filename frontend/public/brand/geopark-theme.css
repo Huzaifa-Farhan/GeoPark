@@ -1,0 +1,44 @@
+/* GeoPark semantic theme tokens. Set data-theme="dark" on a container. */
+:root {
+  --gp-background: #F5F6F2;
+  --gp-surface: #FFFFFF;
+  --gp-surface-subtle: #E9EDE5;
+  --gp-text: #172D28;
+  --gp-text-muted: #59665E;
+  --gp-border: #D9DFD6;
+  --gp-action: #174BE8;
+  --gp-on-action: #FFFFFF;
+  --gp-success: #24724B;
+  --gp-warning: #8A5400;
+  --gp-error: #A53636;
+  --gp-font: "DM Sans", Arial, sans-serif;
+  --gp-radius-control: 8px;
+  --gp-radius-panel: 12px;
+  --gp-content-max: 1280px;
+  --gp-space-4: 4px;
+  --gp-space-8: 8px;
+  --gp-space-12: 12px;
+  --gp-space-16: 16px;
+  --gp-space-24: 24px;
+  --gp-space-32: 32px;
+  --gp-space-48: 48px;
+  --gp-space-64: 64px;
+  --gp-space-96: 96px;
+}
+[data-theme="dark"] {
+  --gp-background: #172D28;
+  --gp-surface: #203830;
+  --gp-surface-raised: #2C4336;
+  --gp-text: #F5F6F2;
+  --gp-text-muted: #B7C5BA;
+  --gp-border: #617565;
+  --gp-action: #DFEFB7;
+  --gp-on-action: #172D28;
+  --gp-success: #DFEFB7;
+  --gp-warning: #F4CE90;
+  --gp-error: #FFA6A6;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .gp-reveal { opacity: 1; transform: none; transition: none; }
+}
